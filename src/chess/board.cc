@@ -375,7 +375,7 @@ bool ChessBoard::IsUnderAttack(BoardSquare square) const {
     const int row = square.row();
     const int col = square.col();
     // Check their pieces that can attack this square:
-    // Check king
+    // Check king (king can attack the other king in different way)
     if (our_king_.get(square)) {
 	      const int krow = their_king_.row();
         const int kcol = their_king_.col();
@@ -418,17 +418,19 @@ bool ChessBoard::IsUnderAttack(BoardSquare square) const {
             }
         }
     }
-    // Check pawns
-    for (const auto& delta : kPawnMoves) {
-        auto dst_row = row + delta.first;
-        auto dst_col = col + delta.second; 
-        const BoardSquare destination(dst_row, dst_col);
-        if (our_pieces_.get(destination)) break;
-        if (their_pieces_get(destination)) {
-            if (pawns_.get(destination)) return true;
-            break;
-        }
-    }
+    // Check pawns (Pawns can always attack others except king)
+	if (our_king_.get(square)) {
+		for (const auto& delta : kPawnMoves) {
+			auto dst_row = row + delta.first;
+			auto dst_col = col + delta.second; 
+			const BoardSquare destination(dst_row, dst_col);
+			if (our_pieces_.get(destination)) break;
+			if (their_pieces_get(destination)) {
+				if (pawns_.get(destination)) return true;
+				break;
+			}
+		}
+	}
     // Check knights
     for (const auto& delta : kKnightMoves) {
         auto dst_row = row + delta.first;
@@ -458,6 +460,108 @@ bool ChessBoard::IsUnderAttack(BoardSquare square) const {
             if (count_block == 2) break;
     }
     return false;
+}
+
+bool ChessBoard::IsUnderProtect(BoardSquare square) const {
+    const int row = square.row();
+    const int col = square.col();
+    // Check our pieces that can attack this square:
+    // Check king
+	for (const auto& delta : kKingMoves) {
+		auto dst_row = row + delta.first;
+		auto dst_col = col + delta.second; 
+		const BoardSquare destination(dst_row, dst_col);
+		if (our_pieces_.get(destination)) break;
+		if (their_pieces_get(destination)) {
+			if (our_king_.get(destination)) return true;
+		break;
+		}
+	}
+    // Check Rooks
+    for (const auto& direction : kRookDirections) {
+        auto dst_row = row;
+        auto dst_col = col;
+        while (true) {
+            dst_row += direction.first;
+            dst_col += direction.second;
+            if (!BoardSquare::IsValid(dst_row, dst_col)) break;
+            const BoardSquare destination(dst_row, dst_col);
+            if (our_pieces_.get(destination)) break;
+            if (our_pieces_.get(destination)) {
+                if (rooks_.get(destination)) return true;
+                break;
+            }
+        }
+    }
+    // Check pawns
+    for (const auto& delta : kPawnMoves) {
+        auto dst_row = row + delta.first;
+        auto dst_col = col + delta.second; 
+        const BoardSquare destination(dst_row, dst_col);
+        if (our_pieces_.get(destination)) break;
+        if (our_pieces_get(destination)) {
+            if (pawns_.get(destination)) return true;
+            break;
+        }
+    }
+    // Check knights
+    for (const auto& delta : kKnightMoves) {
+        auto dst_row = row + delta.first;
+        auto dst_col = col + delta.second;
+        if (!BoardSquare::IsValid(dst_row, dst_col)) continue;
+        const BoardSquare destination(dst_row, dst_col);
+        if (knights_.get(destination) && our_pieces_.get(destination)) {
+            const BoardSquare block(dst_row+delta.first/2,dst_col+delta.second/2);
+            if (!our_pieses_.get(block) && !their_pieces_.get(block)) return true
+        }
+    }
+    // Check Cannons
+    for (const auto& direction : kRookDirections) {
+        auto dst_row = row;
+        auto dst_col = col;
+        int count_block = 0;
+        while (true) {
+            dst_row += direction.first;
+            dst_col += direction.second;
+            if (!BoardSquare::IsValid(dst_row, dst_col)) break;
+            const BoardSquare destination(dst_row, dst_col);
+            if (our_pieces_.get(destination) || their_pieces_.get(destination)) count_block++;
+            if (count_block == 1) continue;
+            if (count_block == 2) {
+                if(Cannons_.get(destination) && our_pieces_.get(destination)) return true;
+            }
+            if (count_block == 2) break;
+    }
+    return false;
+}
+
+bool ChessBoard::CheckOrCatch() {
+	Mirror();
+	for (auto source:our_pieces_) {
+		if (our_king_.get(source)) {
+			if (IsUnderAttack(source)) return true;
+		}
+		if (Rooks.get(source)) {
+			if (IsUnderAttack(source) && !IsUnderProtect(source)) return true;
+		}
+		if (Knights_.get(source)) {
+			if (IsUnderAttack(source) && !IsUnderProtect(source)) return true;
+		}
+		if (cannons_.get(source)) {
+			if (IsUnderAttack(source) && !IsUnderProtect(source)) return true;
+		}
+		if (bishops_.get(source)) {
+			if (IsUnderAttack(source) && !IsUnderProtect(source)) return true;
+		}
+		if (advisors_.get(source)) {
+			if (IsUnderAttack(source) && !IsUnderProtect(source)) return true;
+		}
+		if (pawns_.get(source)) {
+			if (IsUnderAttack(source) && !IsUnderProtect(source)) return true;
+		}
+		return false;
+	}
+	Mirror();
 }
 
 bool ChessBoard::IsLegalMove(Move move) const {

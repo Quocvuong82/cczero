@@ -55,6 +55,10 @@ class ChessBoard {
     bool ApplyMove(Move move);
     // Checks if the square is under attack from "theirs" (black).
     bool IsUnderAttack(BoardSquare square) const;
+	// Checks if the square is under attack from "ours" (white)
+	bool IsUnderProtect(BoardSquare square) const;
+	// Check if checking or catching in current state
+	bool CheckOrCatch();
     // Checks whether at least one of the sides has mating material.
     bool HasMatingMaterial() const;
     // Generates legal moves.

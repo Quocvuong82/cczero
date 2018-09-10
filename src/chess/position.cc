@@ -56,7 +56,10 @@ GameResult PositionHistory::ComputeGameResult() const {
     if (!board.HasMatingMaterial()) return GameResult::DRAW;
     if (Last().GetNoCapturePly() >= 100) return GameResult::DRAW;
     if (Last().GetGamePly() >= 450) return GameResult::DRAW;
-    if (Last().GetRepetitions() >= 2) return GameResult::DRAW;
+    if (Last().GetRepetitions() >= 2) {
+		if (InCatchOrCheckLoop == true) return IsBlackToMove() ? GameResult::BLACK_WON : GameResult::WHITE_WON;
+		if (InCatchOrCheckLoop == false) return GameResult::DRAW;
+	}
 
     return GameResult::UNDECIDED;
 }
@@ -83,6 +86,11 @@ int PositionHistory::ComputeLastMoveRepetitions() const {
     for (int idx = positions_.size() - 3; idx >= 0; idx -= 2) {
         const auto& pos = positions_[idx];
         if (pos.GetBoard() == last.GetBoard()) {
+			// To check weather is in catch or check loop
+			for (int ind = idx; ind <= positions_.size() - 3; ind += 2){
+				if (!CheckOrCatch()) {InCatchOrCheckLoop = false; break;}
+				else {InCatchOrCheckLoop = true;}
+			}
             return 1 + pos.GetRepetitions();
         }
         if (pos.GetNoCapturePly() < 2) return 0;
